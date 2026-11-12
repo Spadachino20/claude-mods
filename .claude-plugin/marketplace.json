@@ -1,0 +1,8 @@
+{
+  "name": "mods-st",
+  "owner": { "name": "ST" },
+  "plugins": [
+    { "name": "clawd-mascota", "source": "./clawd-mascota" },
+    { "name": "pausa-activa", "source": "./pausa-activa" }
+  ]
+}

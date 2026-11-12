@@ -1,0 +1,1 @@
+{ "name": "clawd-mascota", "version": "0.1.0", "description": "Clawd en 8 bits parado sobre el cuadro de texto, animado según lo que hace Claude", "types": "./types/index.d.ts" }
