@@ -3,6 +3,7 @@ import type { ClientKeyEvent, ClientModule, ClientSurface } from 'claude-code'
 
 import { keyEsc, newEsc, stepEsc, viewEsc } from './escalada'
 import type { Esc } from './escalada'
+import { frame, svgEsc, svgLab } from './dibujo'
 import { keyLab, newLab, stepLab, viewLab } from './laberinto'
 import type { Cell, Lab } from './laberinto'
 
@@ -126,15 +127,61 @@ export function tick(s: S): S {
   return s
 }
 
-const Juego: ClientModule<null, S> = (_props, surface: ClientSurface<S>) => {
+// ---------- pixel art de Paletas y Bloques ----------
+function svgPong(p: Pong): string {
+  const C = 8
+  let body = ''
+  for (let y = 0; y < PH * C; y += 8) body += `<rect x="${(PW >> 1) * C + 3}" y="${y + 2}" width="2" height="4" fill="#2a3340"/>`
+  body += `<rect x="${C + 2}" y="${p.py * C}" width="4" height="${PAD * C}" fill="#DE886D"/>`
+  body += `<rect x="${(PW - 2) * C + 2}" y="${p.cy * C}" width="4" height="${PAD * C}" fill="#9fb3c8"/>`
+  body += `<rect x="${p.bx * C + 1}" y="${p.by * C + 1}" width="6" height="6" fill="#f5f5f5"/>`
+  return frame(PW * C, PH * C, 1.4, '#0b0e14', body)
+}
+
+function svgTet(t: Tet): string {
+  const C = 8
+  const block = (x: number, y: number, col: string) =>
+    `<rect x="${x}" y="${y}" width="8" height="8" fill="${col}"/><rect x="${x}" y="${y}" width="8" height="1" fill="rgba(255,255,255,.45)"/><rect x="${x}" y="${y}" width="1" height="8" fill="rgba(255,255,255,.3)"/><rect x="${x}" y="${y + 7}" width="8" height="1" fill="rgba(0,0,0,.35)"/><rect x="${x + 7}" y="${y}" width="1" height="8" fill="rgba(0,0,0,.3)"/>`
+  let body = `<rect width="${BW * C}" height="${BH * C}" fill="#05080c"/>`
+  const live = new Map(cells(t.p).map(([x, y]) => [`${x},${y}`, t.p.k + 1]))
+  t.board.forEach((row, y) => row.forEach((c, x) => {
+    const v = live.get(`${x},${y}`) ?? c
+    body += v ? block(x * C, y * C, SHAPES[v - 1]!.col) : `<rect x="${x * C + 3}" y="${y * C + 3}" width="1" height="1" fill="#1e2630"/>`
+  }))
+  const nx = SHAPES[t.next]!
+  for (const [x, y] of nx.c) body += block((BW + 1 + x) * C, (1 + y) * C, nx.col)
+  return frame((BW + 6) * C, BH * C, 2, '#0b0e14', body)
+}
+
+const svgOf = (s: S): string =>
+  s.game === 'lab' ? svgLab(s.lab, s.t)
+  : s.game === 'esc' ? svgEsc(s.esc, s.t)
+  : s.game === 'pong' ? svgPong(s.pong)
+  : s.game === 'tet' ? svgTet(s.tet)
+  : ''
+
+// en la app de escritorio el tablero lo dibuja el panel con pixel art;
+// acá queda el encabezado (y el teclado). En la terminal se dibuja con texto.
+let isDesk = false
+let lastSvg = ''
+
+const Juego: ClientModule<{ surface?: string } | null, S> = (props, surface: ClientSurface<S>) => {
   const { Box, Text, Button } = surface.elements
+  isDesk = props?.surface === 'desktop'
+  const set = (n: S) => {
+    surface.setState(n)
+    if (!isDesk) return
+    const svg = svgOf(n)
+    if (svg !== lastSvg) { lastSvg = svg; surface.post({ svg }) }
+  }
   if (surface.state === undefined) {
-    surface.setState(fresh())
-    surface.every(TICK, () => { const s = surface.state; if (s && s.game !== 'menu') surface.setState(tick(s)) })
-    surface.onKey(e => { const s = surface.state; if (s) surface.setState(onKey(s, e)) })
+    lastSvg = ''
+    set(fresh())
+    surface.every(TICK, () => { const s = surface.state; if (s && s.game !== 'menu') set(tick(s)) })
+    surface.onKey(e => { const s = surface.state; if (s) set(onKey(s, e)) })
   }
   const s = surface.state ?? fresh()
-  const go = (game: S['game']) => surface.setState({ ...fresh(), game })
+  const go = (game: S['game']) => set({ ...fresh(), game })
 
   // una grilla de celdas de dos caracteres, juntando las del mismo color
   const paint = (grid: Cell[][]) =>
@@ -156,7 +203,7 @@ const Juego: ClientModule<null, S> = (_props, surface: ClientSurface<S>) => {
       <Text mono bold>
         <Text color="#DE886D">{title}</Text>  {stats}
       </Text>
-      <Box flexDirection="column" borderStyle="round">{paint(grid)}</Box>
+      {!isDesk && <Box flexDirection="column" borderStyle="round">{paint(grid)}</Box>}
       {over ? <Text bold color="#e0201b">GAME OVER · R para jugar de nuevo</Text> : <Text dimColor>{help}</Text>}
     </Box>
   )
@@ -188,6 +235,14 @@ const Juego: ClientModule<null, S> = (_props, surface: ClientSurface<S>) => {
         <Text dimColor>M vuelve al menú</Text>
       </Box>
     )
+  }
+
+  if (isDesk && s.game === 'pong') {
+    return game('PALETAS', `Vos ${s.pong.me} · CPU ${s.pong.cpu}`, [], false, '↑ ↓ mover · M menú')
+  }
+  if (isDesk && s.game === 'tet') {
+    const t = s.tet
+    return game('BLOQUES', `Puntos ${t.score}  Líneas ${t.lines}`, [], t.over, '← → mover · ↑ girar · ↓ bajar · espacio caer · M menú')
   }
 
   if (s.game === 'pong') {

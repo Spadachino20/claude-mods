@@ -5,21 +5,21 @@ import type { Cell } from './laberinto'
 export const EW = 24
 export const EH = 16
 // plataformas planas: fila y tramo que cubren; los huecos dejan caer las tazas
-const FLOORS = [
+export const FLOORS = [
   { y: 15, a: 0, b: 23 },
   { y: 12, a: 0, b: 20 },
   { y: 9, a: 3, b: 23 },
   { y: 6, a: 0, b: 20 },
   { y: 3, a: 3, b: 23 },
 ]
-const LADDERS = [
+export const LADDERS = [
   { x: 18, top: 12, bot: 15 },
   { x: 6, top: 9, bot: 12 },
   { x: 16, top: 6, bot: 9 },
   { x: 8, top: 3, bot: 6 },
 ]
-const MACHINE = { x: 21, y: 2 }
-const SERVER = { x: 4, y: 2 }
+export const MACHINE = { x: 21, y: 2 }
+export const SERVER = { x: 4, y: 2 }
 const START = { x: 2, y: 14 }
 
 type Cup = { x: number; y: number; dir: number; jumped?: boolean }
