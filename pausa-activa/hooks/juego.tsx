@@ -203,6 +203,7 @@ const Juego: ClientModule<{ surface?: string } | null, S> = (props, surface: Cli
       <Text mono bold>
         <Text color="#DE886D">{title}</Text>  {stats}
       </Text>
+      {isDesk && <Text color="#ffcf3f">▶ Hacé clic en esta línea para que el teclado mueva el juego</Text>}
       {!isDesk && <Box flexDirection="column" borderStyle="round">{paint(grid)}</Box>}
       {over ? <Text bold color="#e0201b">GAME OVER · R para jugar de nuevo</Text> : <Text dimColor>{help}</Text>}
     </Box>
